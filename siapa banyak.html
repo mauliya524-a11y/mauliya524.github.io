@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Siapa Paling Banyak? (Game Berhitung)</title>
+    <style>
+        /* Gaya CSS untuk Tampilan */
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            text-align: center;
+            background-color: #e8f7f0; /* Warna hijau muda ceria */
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #4CAF50; /* Warna hijau cerah */
+        }
+
+        #game-container {
+            max-width: 700px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+        }
+        
+        #instruction {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        /* Area Objek yang Dihitung */
+        #object-display {
+            min-height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+            border: 3px dashed #b3e0b3;
+            border-radius: 15px;
+            padding: 10px;
+        }
+
+        .item {
+            font-size: 60px; /* Ukuran emoji atau ikon */
+            margin: 10px;
+            user-select: none; /* Agar tidak bisa diseleksi */
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        
+        .item.counted {
+            transform: scale(1.2);
+            opacity: 0.5;
+        }
+
+        /* Area Pilihan Jawaban */
+        #options-container {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+
+        .option-button {
+            padding: 15px 30px;
+            font-size: 36px;
+            font-weight: bold;
+            color: white;
+            background-color: #2196F3; /* Warna biru */
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            box-shadow: 0 4px 0 #1976D2;
+        }
+
+        .option-button:hover {
+            background-color: #0b7dda;
+        }
+        
+        .option-button:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        /* Efek Feedback */
+        #feedback {
+            margin-top: 20px;
+            font-size: 30px;
+            font-weight: bold;
+            display: none;
+        }
+        
+        .correct { color: #4CAF50; }
+        .wrong { color: #F44336; }
+        
+        #next-button {
+            margin-top: 30px;
+            padding: 15px 30px;
+            font-size: 24px;
+            background-color: #FFC107;
+            color: #333;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <h1>🔢 Ayo Hitung Benda! 🍎</h1>
+        <p id="instruction">Berapa jumlah benda lucu ini? Klik atau sentuh bendanya saat menghitung!</p>
+
+        <div id="object-display">
+            </div>
+
+        <div id="options-container">
+            </div>
+        
+        <div id="feedback"></div>
+        <button id="next-button" onclick="loadNextQuestion()">Lanjut!</button>
+    </div>
+
+    <script>
+        // Data Game
+        const itemsList = ["🍎", "⭐", "🎈", "⚽", "🥕"]; // Emoji untuk objek yang dihitung
+        const maxCount = 5; // Batasan hitungan untuk anak 3-5 tahun
+
+        let correctAnswer = 0;
+        let countedItems = 0;
+
+        // Fungsi Audio (Simulasi narasi)
+        function speak(text) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'id-ID';
+                window.speechSynthesis.speak(utterance);
+            } else {
+                console.log("Narasi tidak didukung, teks: " + text);
+            }
+        }
+
+        // 1. Fungsi Membuat Pertanyaan Baru
+        function generateQuestion() {
+            const display = document.getElementById('object-display');
+            const optionsContainer = document.getElementById('options-container');
+            const feedback = document.getElementById('feedback');
+            const nextBtn = document.getElementById('next-button');
+
+            display.innerHTML = '';
+            optionsContainer.innerHTML = '';
+            feedback.style.display = 'none';
+            nextBtn.style.display = 'none';
+            countedItems = 0;
+            
+            // Tentukan Jawaban Benar (Angka random 1-5)
+            correctAnswer = Math.floor(Math.random() * maxCount) + 1;
+            
+            // Pilih Objek dan Tampilkan
+            const selectedItem = itemsList[Math.floor(Math.random() * itemsList.length)];
+            for (let i = 0; i < correctAnswer; i++) {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'item';
+                itemDiv.textContent = selectedItem;
+                itemDiv.setAttribute('data-index', i);
+                
+                // Tambahkan event untuk menghitung saat disentuh (korespondensi satu-satu)
+                itemDiv.addEventListener('click', markAsCounted);
+                itemDiv.addEventListener('touchstart', markAsCounted);
+                
+                display.appendChild(itemDiv);
+            }
+            
+            // Buat Pilihan Jawaban
+            const options = generateOptions(correctAnswer);
+            options.forEach(num => {
+                const button = document.createElement('button');
+                button.className = 'option-button';
+                button.textContent = num;
+                button.onclick = () => checkAnswer(num);
+                optionsContainer.appendChild(button);
+            });
+            
+            speak("Hitung semua " + selectedItem + " ini!");
+        }
+        
+        // Fungsi untuk menandai objek yang sudah dihitung
+        function markAsCounted(e) {
+            const itemDiv = e.target.closest('.item');
+            if (itemDiv && !itemDiv.classList.contains('counted')) {
+                itemDiv.classList.add('counted');
+                countedItems++;
+                speak(countedItems.toString()); // Ucapkan angka yang sedang dihitung
+            }
+        }
+
+        // 2. Fungsi Membuat Pilihan Jawaban (3 Pilihan)
+        function generateOptions(correct) {
+            let options = new Set();
+            options.add(correct);
+            
+            // Tambahkan 2 angka pengecoh
+            while (options.size < 3) {
+                let decoy;
+                do {
+                    // Angka pengecoh antara 1 sampai 5
+                    decoy = Math.floor(Math.random() * maxCount) + 1;
+                } while (options.has(decoy)); // Pastikan pengecoh belum ada
+                
+                options.add(decoy);
+            }
+            
+            // Ubah Set menjadi Array dan acak urutannya
+            let finalOptions = Array.from(options);
+            finalOptions.sort(() => Math.random() - 0.5);
+            
+            return finalOptions;
+        }
+
+        // 3. Fungsi Mengecek Jawaban
+        function checkAnswer(chosenNumber) {
+            const feedback = document.getElementById('feedback');
+            const nextBtn = document.getElementById('next-button');
+            const buttons = document.querySelectorAll('.option-button');
+            
+            // Nonaktifkan semua tombol setelah memilih
+            buttons.forEach(btn => btn.disabled = true);
+            
+            if (chosenNumber === correctAnswer) {
+                feedback.textContent = "HEBAT! Jawabanmu Benar! 🎉";
+                feedback.className = 'correct';
+                speak("Luar biasa! Angka " + chosenNumber + " benar!");
+            } else {
+                feedback.textContent = `Aduh, keliru. Coba lagi di pertanyaan berikutnya! Jawaban yang benar adalah ${correctAnswer}.`;
+                feedback.className = 'wrong';
+                speak("Oh oh, jawabanmu salah. Jangan menyerah ya!");
+            }
+            
+            feedback.style.display = 'block';
+            nextBtn.style.display = 'block';
+        }
+
+        // 4. Fungsi Lanjut ke Pertanyaan Berikutnya
+        function loadNextQuestion() {
+            // Hapus efek hitungan pada item
+            const items = document.querySelectorAll('.item');
+            items.forEach(item => {
+                item.classList.remove('counted');
+                item.removeEventListener('click', markAsCounted);
+                item.removeEventListener('touchstart', markAsCounted);
+            });
+            
+            // Mulai pertanyaan baru
+            generateQuestion();
+        }
+
+        // Mulai Game saat halaman dimuat
+        window.onload = function() {
+            generateQuestion();
+        };
+    </script>
+</body>
+</html>
